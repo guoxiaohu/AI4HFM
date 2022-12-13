@@ -34,6 +34,11 @@ import tensorflow as tf
 from tensorflow import keras
 assert tf.__version__ >= "2.0"
 
+#from tensorflow.python import ipu
+#config= ipu.config.IPUConfig()
+#config.auto_select_ipus=1
+#config.configure_ipu_system()
+
 # Common imports
 import numpy as np
 import os
@@ -52,6 +57,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 # # Functions linking to the AI libraries
+#@tf.function(jit_compile=True)
 def boundary_condition_velocity(values_u,values_v,values_w,nx):
     tempu = tf.Variable(values_u)
     tempv = tf.Variable(values_v)   
@@ -80,7 +86,7 @@ def boundary_condition_velocity(values_u,values_v,values_w,nx):
     tempv[0,nx-1,:,:,0].assign(tf.Variable(tf.zeros((1,nx,nx)))[0,:])     
     tempw[0,nx-1,:,:,0].assign(tf.Variable(tf.zeros((1,nx,nx)))[0,:])      
     return tempu,tempv,tempw
-
+#@tf.function(jit_compile=True)
 def boundary_condition_pressure(values_p,nx):    
     tempp = tf.Variable(values_p)   
     tempp[0,:,:,nx-1,0].assign(tf.Variable(tf.zeros((1,nx,nx)))[0,:]) 
@@ -93,6 +99,7 @@ def boundary_condition_pressure(values_p,nx):
     tempp[0,nx-1,:,:,0].assign(tf.Variable(values_p)[0,nx-2,:,:,0])  
     return tempp
 
+#@tf.function(jit_compile=True)
 def boundary_condition_source(b,nx):  
     'Define inflow boundary conditions for source terms to'
     'avoid incorrect paddings caused by CNNs'
@@ -101,6 +108,7 @@ def boundary_condition_source(b,nx):
     return tempb  
     return tf.convert_to_tensor(b)
 
+#@tf.function(jit_compile=True)
 def bluff_body(values_u,values_v,values_w,sigma,dt,xmin,xmax,ymin,ymax,zmin,zmax):
     temp1 = tf.Variable(values_u)
     temp2 = tf.Variable(values_v)
@@ -110,6 +118,7 @@ def bluff_body(values_u,values_v,values_w,sigma,dt,xmin,xmax,ymin,ymax,zmin,zmax
     temp3[0,zmin:zmax,ymin:ymax,xmin:xmax,0].assign(temp3[0,zmin:zmax,ymin:ymax,xmin:xmax,0]/(1+dt*sigma))
     return temp1,temp2,temp3
 
+#@tf.function(jit_compile=True)
 def save_data(values_u,values_v,values_w,values_p,n_out,itime):
     if itime % n_out == 0:  
         np.save("result_3d_27point/u"+str(itime), arr=values_u[0,:,:,:,0])
@@ -123,6 +132,7 @@ def save_data(values_u,values_v,values_w,values_p,n_out,itime):
 #print(is_gpu)
 
 # # CFD Parameters
+#@tf.function(jit_compile=True)
 def AI_HFM():
 
     # # Initialise
@@ -542,7 +552,11 @@ if __name__ == "__main__":
             keras.layers.InputLayer(input_shape=(1*2**i, 1*2**i, 1*2**i, 1)),
             tf.keras.layers.UpSampling3D(size=(2, 2, 2)),
         ])
-    AI_HFM()    
+
+    #Create a strategy for execution on the IPU
+    #strategy=ipu.ipu_strategy.IPUStrategy()
+    #with strategy.scope():
+        AI_HFM()    
 
 
 
