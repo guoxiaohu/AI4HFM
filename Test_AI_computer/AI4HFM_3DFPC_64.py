@@ -2,7 +2,7 @@
 # coding: utf-8
 
 import os
-os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices' ## enable xla devices
+#os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices' ## enable xla devices
 #get_ipython().system('nvidia-smi ## check Nvidia GPU details')
 # !nvidia-smi -L
 # !nvidia-smi -q
@@ -14,16 +14,16 @@ os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices' ## enable xla devices
 #get_ipython().system("free -h --si | awk  '/Mem:/{print $2}'")
 
 # if use tpu
-# import tensorflow as tf
+#import tensorflow as tf
 # try:
 #   tpu = tf.distribute.cluster_resolver.TPUClusterResolver()  # TPU detection
 #   print('Running on TPU ', tpu.cluster_spec().as_dict()['worker'])
 # except ValueError:
 #   raise BaseException('ERROR: Not connected to a TPU runtime; please see the previous cell in this notebook for instructions!')
 
-# tf.config.experimental_connect_to_cluster(tpu)
-# tf.tpu.experimental.initialize_tpu_system(tpu)
-# tpu_strategy = tf.distribute.TPUStrategy(tpu)
+#tf.config.experimental_connect_to_cluster(tpu)
+#tf.tpu.experimental.initialize_tpu_system(tpu)
+#tpu_strategy = tf.distribute.TPUStrategy(tpu)
 
 # Python ≥3.5 is required
 import sys
@@ -34,10 +34,10 @@ import tensorflow as tf
 from tensorflow import keras
 assert tf.__version__ >= "2.0"
 
-#from tensorflow.python import ipu
-#config= ipu.config.IPUConfig()
-#config.auto_select_ipus=1
-#config.configure_ipu_system()
+from tensorflow.python import ipu
+config= ipu.config.IPUConfig()
+config.auto_select_ipus=1
+config.configure_ipu_system()
 
 # Common imports
 import numpy as np
@@ -203,10 +203,10 @@ def AI_HFM():
         if mgsolver == True:
             for multi_grid in range(multi_itr): 
                 w_1 = np.zeros([1,1,1,1,1])
-                r = CNN3D_A_64(values_p) - b   
+                r = CNN3D_A_32(values_p) - b   
                 r = tf.Variable(r)[0,:,:,nx-1,0].assign(tf.Variable(tf.zeros((1,nx,nx)))[0,:]) 
-                r_32 = CNN3D_res_64(r) 
-                r_16 = CNN3D_res_32(r_32) 
+               # r_32 = CNN3D_res_64(r) 
+                r_16 = CNN3D_res_32(r) 
                 r_8 = CNN3D_res_16(r_16) 
                 r_4 = CNN3D_res_8(r_8) 
                 r_2 = CNN3D_res_4(r_4) 
@@ -226,12 +226,12 @@ def AI_HFM():
                 for Jacobi in range(j_itr):
                     w_16 = (w_16 - CNN3D_A_16(w_16)/w5[0,1,1,1,0] + r_16/w5[0,1,1,1,0])
                 w_32 = CNN3D_prol_16(w_16) 
-                for Jacobi in range(j_itr):
-                    w_32 = (w_32 - CNN3D_A_32(w_32)/w5[0,1,1,1,0] + r_32/w5[0,1,1,1,0])
-                w_64 = CNN3D_prol_32(w_32) 
-                values_p = values_p - w_64
+#                for Jacobi in range(j_itr):
+#                    w_32 = (w_32 - CNN3D_A_32(w_32)/w5[0,1,1,1,0] + r_32/w5[0,1,1,1,0])
+#                w_64 = CNN3D_prol_32(w_32) 
+                values_p = values_p - w_32
                 values_p = tf.Variable(values_p)[0,:,:,nx-1,0].assign(tf.Variable(tf.zeros((1,nx,nx)))[0,:])         
-                values_p = (values_p - CNN3D_A_64(values_p)/w5[0,1,1,1,0] + b/w5[0,1,1,1,0])          
+                values_p = (values_p - CNN3D_A_32(values_p)/w5[0,1,1,1,0] + b/w5[0,1,1,1,0])          
     # correct
         values_p = boundary_condition_pressure(values_p,nx)
         values_u = values_u - CNN3D_pu(values_p)
@@ -244,319 +244,316 @@ def AI_HFM():
             save_data(values_u,values_v,values_w,values_p,n_out,itime+nrestart)
     end = time.time()
     print('time',(end-start))
-
-    fig, ax = plt.subplots(1,3, figsize=[20,5])
-    plt.subplot(1,3,1)
-    plt.imshow(values_u[0,:,:,32,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central yz plane')
-    plt.subplot(1,3,2)
-    plt.imshow(values_u[0,:,32,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xz plane')
-    plt.subplot(1,3,3)
-    plt.imshow(values_u[0,32,:,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xy plane')
-
-    fig, ax = plt.subplots(1,3, figsize=[20,5])
-    plt.subplot(1,3,1)
-    plt.imshow(values_v[0,:,:,32,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central yz plane',)
-    plt.subplot(1,3,2)
-    plt.imshow(values_v[0,:,32,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xz plane')
-    plt.subplot(1,3,3)
-    plt.imshow(values_v[0,32,:,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xy plane')
-
-
-    fig, ax = plt.subplots(1,3, figsize=[20,5])
-    plt.subplot(1,3,1)
-    plt.imshow(values_w[0,:,:,32,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central yz plane')
-    plt.subplot(1,3,2)
-    plt.imshow(values_w[0,:,32,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xz plane')
-    plt.subplot(1,3,3)
-    plt.imshow(values_w[0,32,:,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xy plane')
-
-
-    fig, ax = plt.subplots(1,3, figsize=[20,5])
-    plt.subplot(1,3,1)
-    plt.imshow(values_p[0,:,:,32,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central yz plane')
-    plt.subplot(1,3,2)
-    plt.imshow(values_p[0,:,32,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xz plane')
-    plt.subplot(1,3,3)
-    plt.imshow(values_p[0,32,:,:,0], cmap='jet')
-    plt.colorbar()
-    plt.title('central xy plane')
+#    fig, ax = plt.subplots(1,3, figsize=[20,5])
+#    plt.subplot(1,3,1)
+#    plt.imshow(values_u[0,:,:,32,0], cmap='jet')
+#    plt.colorbar()
+#    plt.title('central yz plane')
+#    plt.subplot(1,3,2)
+#    plt.imshow(values_u[0,:,32,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xz plane')
+##    plt.subplot(1,3,3)
+##    plt.imshow(values_u[0,32,:,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xy plane')
+##
+##    fig, ax = plt.subplots(1,3, figsize=[20,5])
+##    plt.subplot(1,3,1)
+##    plt.imshow(values_v[0,:,:,32,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central yz plane',)
+##    plt.subplot(1,3,2)
+##    plt.imshow(values_v[0,:,32,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xz plane')
+##    plt.subplot(1,3,3)
+##    plt.imshow(values_v[0,32,:,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xy plane')
+##
+##
+##    fig, ax = plt.subplots(1,3, figsize=[20,5])
+##    plt.subplot(1,3,1)
+##    plt.imshow(values_w[0,:,:,32,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central yz plane')
+##    plt.subplot(1,3,2)
+##    plt.imshow(values_w[0,:,32,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xz plane')
+##    plt.subplot(1,3,3)
+##    plt.imshow(values_w[0,32,:,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xy plane')
+##
+##
+##    fig, ax = plt.subplots(1,3, figsize=[20,5])
+##    plt.subplot(1,3,1)
+##    plt.imshow(values_p[0,:,:,32,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central yz plane')
+##    plt.subplot(1,3,2)
+##    plt.imshow(values_p[0,:,32,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xz plane')
+##    plt.subplot(1,3,3)
+##    plt.imshow(values_p[0,32,:,:,0], cmap='jet')
+##    plt.colorbar()
+##    plt.title('central xy plane')
     
     
 if __name__ == "__main__":
-    dt = 0.1
-    dx = 1
-    Re = 1/5     
-    ub = 1
-    sigma = 100000  # bluff body
-    nx = 64
-    ny = 64
-    nz = 64
-    ratio = int(nx/nz)
-    nlevel = int(math.log(nz, 2)) + 1 
-    print('Levels of Multigrid:', nlevel)
-    print('Aspect ratio of Domain:', ratio)
+
+    strategy=ipu.ipu_strategy.IPUStrategy()
+    with strategy.scope():
+        dt = 0.1
+        dx = 1
+        Re = 1/5     
+        ub = 1
+        sigma = 100000  # bluff body
+        nx = 32
+        ny = 32
+        nz = 32
+        ratio = int(nx/nz)
+        nlevel = int(math.log(nz, 2)) + 1 
+        print('Levels of Multigrid:', nlevel)
+        print('Aspect ratio of Domain:', ratio)
 
 
-    # # Weights of CNNs layers
+        # # Weights of CNNs layers
 
-    pd1 = [[2/26, 3/26,  2/26],
-        [3/26, 6/26,  3/26],
-        [2/26, 3/26,  2/26]]
-    pd2 = [[3/26, 6/26,  3/26],
-        [6/26, -88/26, 6/26],
-        [3/26, 6/26,  3/26]]
-    pd3 = [[2/26, 3/26,  2/26],
-        [3/26, 6/26,  3/26],
-        [2/26, 3/26,  2/26]]
-    w1 = np.zeros([1,3,3,3,1])
-    w1[0,0,:,:,0] = np.array(pd1)*dt*Re/dx**2
-    w1[0,1,:,:,0] = np.array(pd2)*dt*Re/dx**2 
-    w1[0,2,:,:,0] = np.array(pd3)*dt*Re/dx**2 
-
-
-    p_div_x1 = [[-0.014, 0.0, 0.014],
-        [-0.056, 0.0, 0.056],
-        [-0.014, 0.0, 0.014]]
-    p_div_x2 = [[-0.056, 0.0, 0.056],
-        [-0.22, 0.0, 0.22],
-        [-0.056, 0.0, 0.056]]
-    p_div_x3 = [[-0.014, 0.0, 0.014],
-        [-0.056, 0.0, 0.056],
-        [-0.014, 0.0, 0.014]]
-
-    p_div_y1 = [[0.014, 0.056, 0.014],
-        [0.0, 0.0, 0.0],
-        [-0.014, -0.056, -0.014]]
-    p_div_y2 = [[0.056, 0.22, 0.056],
-        [0.0, 0.0, 0.0],
-        [-0.056, -0.22, -0.056]]
-    p_div_y3 = [[0.014, 0.056, 0.014],
-        [0.0, 0.0, 0.0],
-        [-0.014, -0.056, -0.014]]
-
-    p_div_z1 = [[0.014, 0.056, 0.014],
-        [0.056, 0.22, 0.056],
-        [0.014, 0.056, 0.014]]
-    p_div_z2 = [[0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0]]
-    p_div_z3 = [[-0.014, -0.056, -0.014],
-        [-0.056, -0.22, -0.056],
-        [-0.014, -0.056, -0.014]]
-    w2 = np.zeros([1,3,3,3,1])
-    w3 = np.zeros([1,3,3,3,1])
-    w4 = np.zeros([1,3,3,3,1])
-
-    w2[0,0,:,:,0] = np.array(p_div_x1)*ub*dt
-    w2[0,1,:,:,0] = np.array(p_div_x2)*ub*dt 
-    w2[0,2,:,:,0] = np.array(p_div_x3)*ub*dt 
-
-    w3[0,0,:,:,0] = np.array(p_div_y1)*ub*dt
-    w3[0,1,:,:,0] = np.array(p_div_y2)*ub*dt
-    w3[0,2,:,:,0] = np.array(p_div_y3)*ub*dt 
-
-    w4[0,0,:,:,0] = np.array(p_div_z1)*ub*dt 
-    w4[0,1,:,:,0] = np.array(p_div_z2)*ub*dt
-    w4[0,2,:,:,0] = np.array(p_div_z3)*ub*dt
+        pd1 = [[2/26, 3/26,  2/26],
+            [3/26, 6/26,  3/26],
+            [2/26, 3/26,  2/26]]
+        pd2 = [[3/26, 6/26,  3/26],
+            [6/26, -88/26, 6/26],
+            [3/26, 6/26,  3/26]]
+        pd3 = [[2/26, 3/26,  2/26],
+            [3/26, 6/26,  3/26],
+            [2/26, 3/26,  2/26]]
+        w1 = np.zeros([1,3,3,3,1])
+        w1[0,0,:,:,0] = np.array(pd1)*dt*Re/dx**2
+        w1[0,1,:,:,0] = np.array(pd2)*dt*Re/dx**2 
+        w1[0,2,:,:,0] = np.array(pd3)*dt*Re/dx**2 
 
 
-    pA1 = [[2/26, 3/26,  2/26],
-        [3/26, 6/26,  3/26],
-        [2/26, 3/26,  2/26]]
-    pA2 = [[3/26, 6/26,  3/26],
-        [6/26, -88/26, 6/26],
-        [3/26, 6/26,  3/26]]
-    pA3 = [[2/26, 3/26,  2/26],
-        [3/26, 6/26,  3/26],
-        [2/26, 3/26,  2/26]]
-    w5 = np.zeros([1,3,3,3,1])
-    w5[0,0,:,:,0] = -np.array(pA1)/dx**2
-    w5[0,1,:,:,0] = -np.array(pA2)/dx**2 
-    w5[0,2,:,:,0] = -np.array(pA3)/dx**2 
+        p_div_x1 = [[-0.014, 0.0, 0.014],
+            [-0.056, 0.0, 0.056],
+            [-0.014, 0.0, 0.014]]
+        p_div_x2 = [[-0.056, 0.0, 0.056],
+            [-0.22, 0.0, 0.22],
+            [-0.056, 0.0, 0.056]]
+        p_div_x3 = [[-0.014, 0.0, 0.014],
+            [-0.056, 0.0, 0.056],
+            [-0.014, 0.0, 0.014]]
+
+        p_div_y1 = [[0.014, 0.056, 0.014],
+            [0.0, 0.0, 0.0],
+            [-0.014, -0.056, -0.014]]
+        p_div_y2 = [[0.056, 0.22, 0.056],
+            [0.0, 0.0, 0.0],
+            [-0.056, -0.22, -0.056]]
+        p_div_y3 = [[0.014, 0.056, 0.014],
+            [0.0, 0.0, 0.0],
+            [-0.014, -0.056, -0.014]]
+
+        p_div_z1 = [[0.014, 0.056, 0.014],
+            [0.056, 0.22, 0.056],
+            [0.014, 0.056, 0.014]]
+        p_div_z2 = [[0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0]]
+        p_div_z3 = [[-0.014, -0.056, -0.014],
+            [-0.056, -0.22, -0.056],
+            [-0.014, -0.056, -0.014]]
+        w2 = np.zeros([1,3,3,3,1])
+        w3 = np.zeros([1,3,3,3,1])
+        w4 = np.zeros([1,3,3,3,1])
+
+        w2[0,0,:,:,0] = np.array(p_div_x1)*ub*dt
+        w2[0,1,:,:,0] = np.array(p_div_x2)*ub*dt 
+        w2[0,2,:,:,0] = np.array(p_div_x3)*ub*dt 
+
+        w3[0,0,:,:,0] = np.array(p_div_y1)*ub*dt
+        w3[0,1,:,:,0] = np.array(p_div_y2)*ub*dt
+        w3[0,2,:,:,0] = np.array(p_div_y3)*ub*dt 
+
+        w4[0,0,:,:,0] = np.array(p_div_z1)*ub*dt 
+        w4[0,1,:,:,0] = np.array(p_div_z2)*ub*dt
+        w4[0,2,:,:,0] = np.array(p_div_z3)*ub*dt
 
 
-    pctyu1 = [[-0.014, 0.0, 0.014],
-        [-0.056, 0.0, 0.056],
-        [-0.014, 0.0, 0.014]]
-    pctyu2 = [[-0.056, 0.0, 0.056],
-        [-0.22, 0.0, 0.22],
-        [-0.056, 0.0, 0.056]]
-    pctyu3 = [[-0.014, 0.0, 0.014],
-        [-0.056, 0.0, 0.056],
-        [-0.014, 0.0, 0.014]]
-
-    pctyv1 = [[0.014, 0.056, 0.014],
-        [0.0, 0.0, 0.0],
-        [-0.014, -0.056, -0.014]]
-    pctyv2 = [[0.056, 0.22, 0.056],
-        [0.0, 0.0, 0.0],
-        [-0.056, -0.22, -0.056]]
-    pctyv3 = [[0.014, 0.056, 0.014],
-        [0.0, 0.0, 0.0],
-        [-0.014, -0.056, -0.014]]
-
-    pctyw1 = [[0.014, 0.056, 0.014],
-        [0.056, 0.22, 0.056],
-        [0.014, 0.056, 0.014]]
-    pctyw2 = [[0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0]]
-    pctyw3 = [[-0.014, -0.056, -0.014],
-        [-0.056, -0.22, -0.056],
-        [-0.014, -0.056, -0.014]]
-    w6 = np.zeros([1,3,3,3,1])
-    w7 = np.zeros([1,3,3,3,1])
-    w8 = np.zeros([1,3,3,3,1])
-    w9 = np.zeros([1,2,2,2,1])
-    w6[0,0,:,:,0] = np.array(pctyu1)/dt
-    w6[0,1,:,:,0] = np.array(pctyu2)/dt 
-    w6[0,2,:,:,0] = np.array(pctyu3)/dt 
-    w7[0,0,:,:,0] = np.array(pctyv1)/dt 
-    w7[0,1,:,:,0] = np.array(pctyv2)/dt 
-    w7[0,2,:,:,0] = np.array(pctyv3)/dt 
-    w8[0,0,:,:,0] = np.array(pctyw1)/dt 
-    w8[0,1,:,:,0] = np.array(pctyw2)/dt 
-    w8[0,2,:,:,0] = np.array(pctyw3)/dt 
-    w9[0,:,:,:,0] = 0.125
-
-    kernel_initializer_1 = tf.keras.initializers.constant(w1)
-    kernel_initializer_2 = tf.keras.initializers.constant(w2)
-    kernel_initializer_3 = tf.keras.initializers.constant(w3)
-    kernel_initializer_4 = tf.keras.initializers.constant(w4)
-    kernel_initializer_5 = tf.keras.initializers.constant(w5)
-    kernel_initializer_6 = tf.keras.initializers.constant(w6)
-    kernel_initializer_7 = tf.keras.initializers.constant(w7)
-    kernel_initializer_8 = tf.keras.initializers.constant(w8)
-    kernel_initializer_9 = tf.keras.initializers.constant(w9)
-    bias_initializer = tf.keras.initializers.constant(np.zeros((1,)))
+        pA1 = [[2/26, 3/26,  2/26],
+            [3/26, 6/26,  3/26],
+            [2/26, 3/26,  2/26]]
+        pA2 = [[3/26, 6/26,  3/26],
+            [6/26, -88/26, 6/26],
+            [3/26, 6/26,  3/26]]
+        pA3 = [[2/26, 3/26,  2/26],
+            [3/26, 6/26,  3/26],
+            [2/26, 3/26,  2/26]]
+        w5 = np.zeros([1,3,3,3,1])
+        w5[0,0,:,:,0] = -np.array(pA1)/dx**2
+        w5[0,1,:,:,0] = -np.array(pA2)/dx**2 
+        w5[0,2,:,:,0] = -np.array(pA3)/dx**2 
 
 
-    # # Libraries for solving momentum equation
+        pctyu1 = [[-0.014, 0.0, 0.014],
+            [-0.056, 0.0, 0.056],
+            [-0.014, 0.0, 0.014]]
+        pctyu2 = [[-0.056, 0.0, 0.056],
+            [-0.22, 0.0, 0.22],
+            [-0.056, 0.0, 0.056]]
+        pctyu3 = [[-0.014, 0.0, 0.014],
+            [-0.056, 0.0, 0.056],
+            [-0.014, 0.0, 0.014]]
 
-    CNN3D_central_2nd_dif = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_1,
-                                    bias_initializer=bias_initializer),
-    ])
+        pctyv1 = [[0.014, 0.056, 0.014],
+            [0.0, 0.0, 0.0],
+            [-0.014, -0.056, -0.014]]
+        pctyv2 = [[0.056, 0.22, 0.056],
+            [0.0, 0.0, 0.0],
+            [-0.056, -0.22, -0.056]]
+        pctyv3 = [[0.014, 0.056, 0.014],
+            [0.0, 0.0, 0.0],
+            [-0.014, -0.056, -0.014]]
 
-    CNN3D_central_2nd_xadv = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_2,
-                                    bias_initializer=bias_initializer),
-    ])
+        pctyw1 = [[0.014, 0.056, 0.014],
+            [0.056, 0.22, 0.056],
+            [0.014, 0.056, 0.014]]
+        pctyw2 = [[0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0]]
+        pctyw3 = [[-0.014, -0.056, -0.014],
+            [-0.056, -0.22, -0.056],
+            [-0.014, -0.056, -0.014]]
+        w6 = np.zeros([1,3,3,3,1])
+        w7 = np.zeros([1,3,3,3,1])
+        w8 = np.zeros([1,3,3,3,1])
+        w9 = np.zeros([1,2,2,2,1])
+        w6[0,0,:,:,0] = np.array(pctyu1)/dt
+        w6[0,1,:,:,0] = np.array(pctyu2)/dt 
+        w6[0,2,:,:,0] = np.array(pctyu3)/dt 
+        w7[0,0,:,:,0] = np.array(pctyv1)/dt 
+        w7[0,1,:,:,0] = np.array(pctyv2)/dt 
+        w7[0,2,:,:,0] = np.array(pctyv3)/dt 
+        w8[0,0,:,:,0] = np.array(pctyw1)/dt 
+        w8[0,1,:,:,0] = np.array(pctyw2)/dt 
+        w8[0,2,:,:,0] = np.array(pctyw3)/dt 
+        w9[0,:,:,:,0] = 0.125
 
-    CNN3D_central_2nd_yadv = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_3,
-                                    bias_initializer=bias_initializer),
-    ])
-
-    CNN3D_central_2nd_zadv = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_4,
-                                    bias_initializer=bias_initializer),
-    ])
-
-    CNN3D_Su = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_6,
-                                    bias_initializer=bias_initializer),
-    ])
-
-    CNN3D_Sv = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_7,
-                                    bias_initializer=bias_initializer),
-    ])
-
-    CNN3D_Sw = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_8,
-                                    bias_initializer=bias_initializer),
-    ])
-
-
-    CNN3D_pu = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_2,
-                                    bias_initializer=bias_initializer),
-    ])
-
-    CNN3D_pv = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_3,
-                                    bias_initializer=bias_initializer),
-    ])
-
-    CNN3D_pw = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
-                                    kernel_initializer=kernel_initializer_4,
-                                    bias_initializer=bias_initializer),
-    ])
+        kernel_initializer_1 = tf.keras.initializers.constant(w1)
+        kernel_initializer_2 = tf.keras.initializers.constant(w2)
+        kernel_initializer_3 = tf.keras.initializers.constant(w3)
+        kernel_initializer_4 = tf.keras.initializers.constant(w4)
+        kernel_initializer_5 = tf.keras.initializers.constant(w5)
+        kernel_initializer_6 = tf.keras.initializers.constant(w6)
+        kernel_initializer_7 = tf.keras.initializers.constant(w7)
+        kernel_initializer_8 = tf.keras.initializers.constant(w8)
+        kernel_initializer_9 = tf.keras.initializers.constant(w9)
+        bias_initializer = tf.keras.initializers.constant(np.zeros((1,)))
 
 
-    # # Libraries for multigrid algorithms
+        # # Libraries for solving momentum equation
 
-    for i in range(nlevel):
-        locals()['CNN3D_A_'+str(2**i)] = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(int(nz*0.5**(nlevel-1-i)), int(ny*0.5**(nlevel-1-i)), int(nx*0.5**(nlevel-1-i)), 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',         
-                                    kernel_initializer=kernel_initializer_5,
-                                    bias_initializer=bias_initializer)
+        CNN3D_central_2nd_dif = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_1,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_central_2nd_xadv = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_2,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_central_2nd_yadv = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_3,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_central_2nd_zadv = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_4,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_Su = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_6,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_Sv = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_7,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_Sw = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_8,
+                                        bias_initializer=bias_initializer),
         ])
 
 
-    for i in range(nlevel-1):
-        locals()['CNN3D_res_'+str(2**(i+1))] = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(int(nz*0.5**(nlevel-2-i)), int(ny*0.5**(nlevel-2-i)), int(nx*0.5**(nlevel-2-i)), 1)),
-            tf.keras.layers.Conv3D(1, kernel_size=2, strides=2, padding='VALID',  # restriction
-                                    kernel_initializer=kernel_initializer_9,
-                                    bias_initializer=bias_initializer),   
-        ])    
-
-
-    for i in range(nlevel-1):
-        locals()['CNN3D_prol_'+str(2**i)] = keras.models.Sequential([
-            keras.layers.InputLayer(input_shape=(1*2**i, 1*2**i, 1*2**i, 1)),
-            tf.keras.layers.UpSampling3D(size=(2, 2, 2)),
+        CNN3D_pu = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_2,
+                                        bias_initializer=bias_initializer),
         ])
 
-    #Create a strategy for execution on the IPU
-    #strategy=ipu.ipu_strategy.IPUStrategy()
-    #with strategy.scope():
+        CNN3D_pv = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_3,
+                                        bias_initializer=bias_initializer),
+        ])
+
+        CNN3D_pw = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(nx, ny, nz, 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',
+                                        kernel_initializer=kernel_initializer_4,
+                                        bias_initializer=bias_initializer),
+        ])
+
+
+        # # Libraries for multigrid algorithms
+
+        for i in range(nlevel):
+            locals()['CNN3D_A_'+str(2**i)] = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(int(nz*0.5**(nlevel-1-i)), int(ny*0.5**(nlevel-1-i)), int(nx*0.5**(nlevel-1-i)), 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=3, strides=1, padding='SAME',         
+                                        kernel_initializer=kernel_initializer_5,
+                                        bias_initializer=bias_initializer)
+            ])
+
+
+        for i in range(nlevel-1):
+            locals()['CNN3D_res_'+str(2**(i+1))] = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(int(nz*0.5**(nlevel-2-i)), int(ny*0.5**(nlevel-2-i)), int(nx*0.5**(nlevel-2-i)), 1)),
+                tf.keras.layers.Conv3D(1, kernel_size=2, strides=2, padding='VALID',  # restriction
+                                        kernel_initializer=kernel_initializer_9,
+                                        bias_initializer=bias_initializer),   
+            ])    
+
+
+        for i in range(nlevel-1):
+            locals()['CNN3D_prol_'+str(2**i)] = keras.models.Sequential([
+                keras.layers.InputLayer(input_shape=(1*2**i, 1*2**i, 1*2**i, 1)),
+                tf.keras.layers.UpSampling3D(size=(2, 2, 2)),
+            ])
+
+        #Create a strategy for execution on the IPU
         AI_HFM()    
-
-
-
